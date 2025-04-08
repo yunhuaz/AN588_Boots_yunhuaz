@@ -1,0 +1,111 @@
+---
+title: "AN588_Boots_yunhuaz"
+format: html_document
+editor: visual
+---
+
+## Using the "KamilarAndCooperData.csv" dataset, run a linear regression looking at log(HomeRange_km2) in relation to log(Body_mass_female_mean) and report your $\beta$ coefficients (slope and intercept)
+
+```{r}
+# Setting Data up 
+setwd("C:/Users/yunhu/Documents/BI588/AN588_Boots_yunhuaz")
+data <- read.csv("KamilarAndCooperData.csv")
+```
+
+```{r}
+lm1 <- lm(log(HomeRange_km2) ~ log(Body_mass_female_mean), data = data)
+summary(lm1)
+```
+
+The intercept of the linear regression model is -9.44 km^2^, and the $\beta$ coefficient is 1.03 grams.
+
+## Then, use bootstrapping to sample from your data 1000 times with replacements, each time fitting the same model and calculating the same coefficients. This generates a sampling distribution for each $\beta$ coefficients.
+
+```{r}
+## Loading necessary libraries
+library(boot)
+
+# Creating a function to extract coefficients from the linear model
+lm_coef <- function(data, indices) {
+  sampled_data <- data[indices,]
+  
+  # Fitting the model
+  lm2 <- lm(log(HomeRange_km2) ~ log(Body_mass_female_mean), data = sampled_data)
+  
+  # Returning the values (intercept & slope)
+  return(c(
+    intercept = coef(lm2)[1], # naming the output of column 1 = intercepts
+    slope = coef(lm2)[2] # naming the output of column 2 = slopes
+  ))
+}
+
+# Setting up bootstrap
+set.seed(1) # To ensure we recieve the same results
+samples <- 1000 
+
+# Run bootstrap
+bootstrap_output <- boot(
+  data = data,
+  R = 1000,
+  statistic = lm_coef
+)
+bootstrap_output
+```
+
+I found a package called "boot", which allowed me to perform the bootstrap much quicker than manually coding the bootstrap as this require more lines of code. When manually coding bootstrap I would have to create a for loop to store the coefficients and manage the indices. However, by using the function boot() in boot it allows me to perform the code with a for loop. When manually coding bootstrap I would have to compute CIs and SE using quartile, while boot has functions that compute its through boot.ci.
+
+```{r}
+# Create dataframe from bootstrap results
+boot_coefs <- data.frame(
+  intercept = bootstrap_output$t[, 1],  
+  slope = bootstrap_output$t[, 2]     
+)
+
+# View first few rows
+head(boot_coefs)
+```
+
+Displayed the first 6 rows of bootstrap_output only including their intercept and slope.
+
+```{r}
+# Computing the SE of log(Body_mass_female_mean)
+boot_se <- apply(bootstrap_output$t,2,sd)
+boot_se
+```
+
+```{r}
+# Computing the 95% CI of log(Body_mass_female_mean)
+boot_ci <- boot.ci(bootstrap_output, type = "basic", index = 2)$basic[4:5]
+```
+
+```{r}
+# Computing 95% CI of Intercept for dataframe
+boot_ci_intercept <- boot.ci(bootstrap_output, type = "basic", index = 1)$basic[4:5]
+
+# Format bootstrapped CIs as strings to put into df
+boot_ci_formatted <- c(
+  paste("(", boot_ci_intercept[1], ", ", boot_ci_intercept[2], ")"),
+  paste("(", boot_ci[1], ", ", boot_ci[2], ")")
+)
+
+# Creating a dataframe to compare the regular lm and the bootstrapped lm outputs
+df <- data.frame(
+  LM_SE = summary(lm1)$coefficients[, "Std. Error"],
+  Boot_SE = boot_se,
+  LM_CI = paste("(", confint(lm1)[, 1], ", ", confint(lm1)[, 2], ")"),
+  Boot_CI = boot_ci_formatted
+)
+df
+```
+
+-   How does the former compare to the SE estimated from your entire dataset using the formula for standard error implemented in `lm()`?
+
+    The bootstrap standard errors (Boot_SE, SE = 0.075) are slightly smaller than the standard errors estimated by the linear model (LM_SE, SE = 0.085). This suggests that the bootstrapped data has slightly less variability in data than what the linear model assumes. Therefore, in the bootstrap model and the linear model are providing similar inferences of the effect of log(Body_mass_female_mean) on log(HomeRange_km2).
+
+-   How does the latter compare to the 95% CI estimated from your entire dataset?
+
+    The 95% confidence intervals of the bootstrapped model are slightly smaller than the 95% confidence intervals of the linear model. The bootstrap CI has a higher lower bound and a lower upper bound. This suggest that the coefficient estimate between the bootstrapped model and linear model are relatively similar, indicating that both models provide similar inferences on the effect of log(Body_mass_female_mean) on log(HomeRange_km2).
+
+## Issues
+
+1.  When manually coding the bootstrap model, I ran into issues where the data wasn't the correct type for subsetting into a data frame within the for loop I created. This resulted in making the process inefficient with long run times. Therefore, I found the package "boot" which simplified the code and improved the performance.

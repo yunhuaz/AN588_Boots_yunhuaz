@@ -180,7 +180,7 @@ for (n in seq(10,200, by = 10)) {
   }
 }
 
-plot_data
+head(plot_data)
 ```
 
 I am receiving an error because some confidence interval points come from extreme values within my bootstrap sample which can come from small samples in the beginning like 10 bootstraps.
@@ -204,3 +204,4 @@ ggplot(plot_data, aes(x = Number_of_Bootstraps, y = Value, color = Type, linetyp
 
 1.  When manually coding the bootstrap model, I ran into issues where the data wasn't the correct type for subsetting into a data frame within the for loop I created. This resulted in making the process inefficient with long run times. Therefore, I found the package "boot" which simplified the code and improved the performance.
 2.  I had a lot of trouble implementing boot into the function and then creating the graphs for the extra credit and extra extra credit. I think it was because I was handling with multiple data types that I often got lost of which variable is what. Hence I ran into a lot of errors trying to reorganize a boot dataframe to display the outputs.
+3.  I also didn't realize I misinterpreted the intercept and slope for question 1, however my peer reviewer was able to spot that and allow me to fix my mistake.
